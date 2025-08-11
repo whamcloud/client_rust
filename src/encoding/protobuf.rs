@@ -98,6 +98,7 @@ impl DescriptorEncoder<'_> {
         help: &str,
         unit: Option<&Unit>,
         metric_type: MetricType,
+        auto_suffix: bool,
     ) -> Result<MetricEncoder<'s>, std::fmt::Error> {
         let family = openmetrics_data_model::MetricFamily {
             name: {
@@ -135,6 +136,7 @@ impl DescriptorEncoder<'_> {
                 .metrics,
             metric_type,
             labels,
+            auto_suffix,
         })
     }
 }
@@ -150,6 +152,7 @@ pub(crate) struct MetricEncoder<'f> {
     family: &'f mut Vec<openmetrics_data_model::Metric>,
     /// Labels to be added to each metric.
     labels: Vec<openmetrics_data_model::Label>,
+    auto_suffix: bool,
 }
 
 impl MetricEncoder<'_> {
@@ -245,6 +248,7 @@ impl MetricEncoder<'_> {
             metric_type: self.metric_type,
             family: self.family,
             labels,
+            auto_suffix: self.auto_suffix,
         })
     }
 

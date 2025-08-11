@@ -126,7 +126,39 @@ impl Registry {
         help: H,
         metric: impl Metric,
     ) {
-        self.priv_register(name, help, metric, None)
+        self.priv_register(name, help, metric, None, true)
+    }
+
+    /// Register a metric with the [`Registry`].
+    ///
+    /// Note: In the Open Metrics text exposition format some metric types have
+    /// a special suffix, e.g. the
+    /// [`Counter`](crate::metrics::counter::Counter`) metric with `_total`.
+    /// These suffixes are inferred through the metric type and must not be
+    /// appended to the metric name manually by the user.
+    ///
+    /// Note: A full stop punctuation mark (`.`) is automatically added to the
+    /// passed help text.
+    ///
+    /// Use [`Registry::register_with_unit`] whenever a unit for the given
+    /// metric is known.
+    ///
+    /// ```
+    /// # use prometheus_client::metrics::counter::{Atomic as _, Counter};
+    /// # use prometheus_client::registry::{Registry, Unit};
+    /// #
+    /// let mut registry = Registry::default();
+    /// let counter: Counter = Counter::default();
+    ///
+    /// registry.register_without_auto_suffix("my_counter", "This is my counter", counter.clone());
+    /// ```
+    pub fn register_without_auto_suffix<N: Into<String>, H: Into<String>>(
+        &mut self,
+        name: N,
+        help: H,
+        metric: impl Metric,
+    ) {
+        self.priv_register(name, help, metric, None, false)
     }
 
     /// Register a metric with the [`Registry`] specifying the metric's unit.
@@ -158,7 +190,7 @@ impl Registry {
         unit: Unit,
         metric: impl Metric,
     ) {
-        self.priv_register(name, help, metric, Some(unit))
+        self.priv_register(name, help, metric, Some(unit), false)
     }
 
     fn priv_register<N: Into<String>, H: Into<String>>(
@@ -167,8 +199,9 @@ impl Registry {
         help: H,
         metric: impl Metric,
         unit: Option<Unit>,
+        auto_suffix: bool,
     ) {
-        let descriptor = Descriptor::new(name, help, unit);
+        let descriptor = Descriptor::new(name, help, unit, auto_suffix);
         self.metrics.push((descriptor, Box::new(metric)));
     }
 
@@ -295,6 +328,7 @@ impl Registry {
                 &descriptor.help,
                 descriptor.unit.as_ref(),
                 EncodeMetric::metric_type(metric.as_ref()),
+                descriptor.auto_suffix,
             )?;
             metric.encode(metric_encoder)?;
         }
@@ -335,15 +369,17 @@ struct Descriptor {
     name: String,
     help: String,
     unit: Option<Unit>,
+    auto_suffix: bool,
 }
 
 impl Descriptor {
     /// Create new [`Descriptor`].
-    fn new<N: Into<String>, H: Into<String>>(name: N, help: H, unit: Option<Unit>) -> Self {
+    fn new<N: Into<String>, H: Into<String>>(name: N, help: H, unit: Option<Unit>, auto_suffix: bool) -> Self {
         Self {
             name: name.into(),
             help: help.into() + ".",
             unit,
+            auto_suffix,
         }
     }
 }

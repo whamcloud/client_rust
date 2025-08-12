@@ -371,6 +371,10 @@ where
     fn metric_type(&self) -> MetricType {
         M::TYPE
     }
+
+    fn is_empty(&self) -> bool {
+        self.metrics.read().is_empty()
+    }
 }
 
 #[cfg(test)]

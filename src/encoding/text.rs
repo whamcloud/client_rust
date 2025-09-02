@@ -221,6 +221,7 @@ impl DescriptorEncoder<'_> {
         help: &str,
         unit: Option<&'s Unit>,
         metric_type: MetricType,
+        auto_suffix: bool,
     ) -> Result<MetricEncoder<'s>, std::fmt::Error> {
         self.writer.write_str("# HELP ")?;
         if let Some(prefix) = self.prefix {
@@ -231,7 +232,10 @@ impl DescriptorEncoder<'_> {
         if let Some(unit) = unit {
             self.writer.write_str("_")?;
             self.writer.write_str(unit.as_str())?;
+        } else if metric_type == MetricType::Counter && auto_suffix {
+            self.writer.write_str("_total")?;
         }
+
         self.writer.write_str(" ")?;
         self.writer.write_str(help)?;
         self.writer.write_str("\n")?;
@@ -245,7 +249,10 @@ impl DescriptorEncoder<'_> {
         if let Some(unit) = unit {
             self.writer.write_str("_")?;
             self.writer.write_str(unit.as_str())?;
+        } else if metric_type == MetricType::Counter && auto_suffix {
+            self.writer.write_str("_total")?;
         }
+
         self.writer.write_str(" ")?;
         self.writer.write_str(metric_type.as_str())?;
         self.writer.write_str("\n")?;
@@ -271,6 +278,7 @@ impl DescriptorEncoder<'_> {
             unit,
             const_labels: self.labels,
             family_labels: None,
+            auto_suffix,
         })
     }
 }
@@ -291,6 +299,7 @@ pub(crate) struct MetricEncoder<'a> {
     unit: Option<&'a Unit>,
     const_labels: &'a [(Cow<'static, str>, Cow<'static, str>)],
     family_labels: Option<&'a dyn super::EncodeLabelSet>,
+    auto_suffix: bool,
 }
 
 impl std::fmt::Debug for MetricEncoder<'_> {
@@ -307,6 +316,7 @@ impl std::fmt::Debug for MetricEncoder<'_> {
             .field("unit", &self.unit)
             .field("const_labels", &self.const_labels)
             .field("labels", &labels.as_str())
+            .field("auto_suffix", &self.auto_suffix)
             .finish()
     }
 }
@@ -323,7 +333,9 @@ impl MetricEncoder<'_> {
     ) -> Result<(), std::fmt::Error> {
         self.write_prefix_name_unit()?;
 
-        self.write_suffix("total")?;
+        if self.auto_suffix {
+            self.write_suffix("total")?;
+        }
 
         self.encode_labels::<NoLabelSet>(None)?;
 
@@ -393,6 +405,7 @@ impl MetricEncoder<'_> {
             unit: self.unit,
             const_labels: self.const_labels,
             family_labels: Some(label_set),
+            auto_suffix: self.auto_suffix,
         })
     }
 
@@ -1117,6 +1130,7 @@ mod tests {
                     "some help",
                     None,
                     counter.metric_type(),
+                    false,
                 )?;
                 counter.encode(metric_encoder)?;
                 Ok(())

@@ -109,12 +109,13 @@ impl DescriptorEncoder<'_> {
         help: &str,
         unit: Option<&'s Unit>,
         metric_type: MetricType,
+        auto_suffix: bool,
     ) -> Result<MetricEncoder<'s>, std::fmt::Error> {
         for_both_mut!(
             self,
             DescriptorEncoderInner,
             e,
-            Ok(e.encode_descriptor(name, help, unit, metric_type)?.into())
+            Ok(e.encode_descriptor(name, help, unit, metric_type, auto_suffix)?.into())
         )
     }
 }
